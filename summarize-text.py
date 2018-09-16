@@ -42,10 +42,9 @@ def boost(score, index, num_sentences):
 def main():
     import nltk, re, os
     from operator import itemgetter
+    from nltk.tokenize import sent_tokenize
     from nltk.corpus import stopwords
     from nltk.stem import PorterStemmer
-    # nltk.download('stopwords')
-    # nltk.download('punkt')
 
     ps = PorterStemmer() # stems words to their roots
     stop_words = set(stopwords.words('english'))
@@ -79,16 +78,16 @@ def main():
         for word in sentence_tokens:
             word = ps.stem(word)
             if word in frequency_table:
-                if word in title and word not in title_words_set: 
-                    title_words_bonus += (1/len(title))
-                    title_words_set.add(word)
+                # if word in title and word not in title_words_set: 
+                #     title_words_bonus += (1/len(title))
+                #     title_words_set.add(word)
                 sentence_len += 1
                 info_score += frequency_table[word]
         sentence = clean_sentence(sentence)
         if (sentence_len): # only count sentences that actually have non stopwords        
             # info_score = boost(info_score, order_num, len(sentences)) # adjust score by where the sentence appeared in text
-            if (title_words_bonus):
-                info_score *= (1+title_words_bonus)
+            # if (title_words_bonus):
+            #     info_score *= (1+title_words_bonus)
             info_score = info_score/sentence_len # adjust score by length of sentence
             sentence_scores.append((sentence, info_score, order_num))
             order_num += 1
@@ -102,15 +101,6 @@ def main():
     os.system('clear')
     for tuple_ in summary_tuples:
         summary += (tuple_[0]+" ")
-        ########################################################
-        sentence = tuple_[0]
-        sentence_len = 0 # count nonstop words towards length
-        sentence_tokens = tokenize(sentence)
-        for word in sentence_tokens:
-            word = ps.stem(word)
-            if word in frequency_table:
-                sentence_len += 1
-                info_score += frequency_table[word]
 
     print("Summary:\n", summary)
 
