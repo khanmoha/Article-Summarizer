@@ -1,8 +1,3 @@
-"""
-A single quote with multiple sentences in it gets seperated into multiple
-sentences with nltk.tokenize.sent_tokenize().
-"""
-
 def tokenize(text):
     """Return array of split words with trailing/preceeding punctuation removed."""
     import string
