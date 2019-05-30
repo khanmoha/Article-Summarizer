@@ -61,6 +61,15 @@ def main():
     # text = read_input()
     article_url = input("Enter url for article you wish to summarize:")
     text = extract_article(article_url)
+    
+    # Clean up text
+    text = re.sub(r'[“”]', '"', text) # replace special quotes with normal ones
+    # Remove lines that do not end in punctuation e.g. titles, captions, metadata etc
+    lines = text.split("\n")  
+    lines_filtered = [line for line in lines if line and (line[-1] == "." or \
+        line[-2:] == '."' or line[-2:] == '!"' or line[-2:] == '?"')]
+    text = "\n".join(lines_filtered)
+    print(text)
 
     # Remove stop words & create frequency table
     word_tokens = tokenize(text)
@@ -78,25 +87,26 @@ def main():
     sentence_scores = []
     order_num = 0 # remember order of sentences in text
     for sentence in sentences:
-        title_words_set = set()
-        title_words_bonus = 0
+        sentence = clean_sentence(sentence)
+        # title_words_set = set()
+        # title_words_bonus = 0
         info_score = 0
         sentence_len = 0 # count nonstop words towards length
         sentence_tokens = tokenize(sentence)
         for word in sentence_tokens:
             word = ps.stem(word)
-            if word in frequency_table:
+            if word in frequency_table: # only look at non-stopwords
                 # if word in title and word not in title_words_set: 
                 #     title_words_bonus += (1/len(title))
                 #     title_words_set.add(word)
                 sentence_len += 1
                 info_score += frequency_table[word]
-        sentence = clean_sentence(sentence)
+        
         if (sentence_len): # only count sentences that actually have non stopwords        
             # info_score = boost(info_score, order_num, len(sentences)) # adjust score by where the sentence appeared in text
             # if (title_words_bonus):
             #     info_score *= (1+title_words_bonus)
-            info_score = info_score/sentence_len # adjust score by length of sentence
+            info_score = info_score # adjust score by length of sentence?
             sentence_scores.append((sentence, info_score, order_num))
             order_num += 1
     
@@ -108,7 +118,7 @@ def main():
     summary = ""
     os.system('clear')
     for tuple_ in summary_tuples:
-        summary += (tuple_[0]+" ")
+        summary += (tuple_[0]+"\n")
 
     print("Summary:\n", summary)
 
