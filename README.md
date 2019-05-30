@@ -1,2 +1,2 @@
 # Article-Summarizer
-Command line interface to summarize text. Enter summary length, title and text to retrieve a short summary.
+Command line interface to summarize text. Enter desired summary length and article URL to retrieve a short summary.
