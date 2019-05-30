@@ -6,9 +6,7 @@ from nltk.stem import PorterStemmer
 from bs4 import BeautifulSoup
 
 def extract_article(article_url):
-    # url = "https://www.currentaffairs.org/2019/05/poverty-makes-everything-worse"
     url = "http://boilerpipe-web.appspot.com/extract?output=text&url="
-    # article_url = "https://www.currentaffairs.org/2019/05/poverty-makes-everything-worse"
     url = url + article_url
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     response = urllib.request.urlopen(req)
