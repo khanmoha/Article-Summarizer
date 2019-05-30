@@ -1,6 +1,24 @@
+import string, sys, math, nltk, re, os, urllib.request
+from operator import itemgetter
+from nltk.tokenize import sent_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from bs4 import BeautifulSoup
+
+def extract_article(article_url):
+    # url = "https://www.currentaffairs.org/2019/05/poverty-makes-everything-worse"
+    url = "http://boilerpipe-web.appspot.com/extract?output=text&url="
+    # article_url = "https://www.currentaffairs.org/2019/05/poverty-makes-everything-worse"
+    url = url + article_url
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    response = urllib.request.urlopen(req)
+    
+    soup = BeautifulSoup(response, features="html.parser")
+    return soup.get_text()
+
 def tokenize(text):
     """Return array of split words with trailing/preceeding punctuation removed."""
-    import string
+    
     word_tokens = []
     for word in text.split():
         word = word.strip(string.punctuation+"“ ”–—")
@@ -17,7 +35,7 @@ def clean_sentence(sentence):
 
 def read_input():
     """Read input that has newlines."""
-    import sys
+    
     print("Enter text. Enter 'end' on new line when finished: ")
     text = ""
     for line in sys.stdin:
@@ -28,26 +46,23 @@ def read_input():
 
 def boost(score, index, num_sentences):
     """Weight sentences that appear at the beginning and end more."""
-    import math
+    
     if (index > num_sentences/2):
         index = num_sentences - (index + 1)
     factor = 1 + math.exp((index*(-1)) / num_sentences/2)
     return (score * factor)
 
 def main():
-    import nltk, re, os
-    from operator import itemgetter
-    from nltk.tokenize import sent_tokenize
-    from nltk.corpus import stopwords
-    from nltk.stem import PorterStemmer
 
     ps = PorterStemmer() # stems words to their roots
     stop_words = set(stopwords.words('english'))
     summary_len = input("How many sentences should be in the summary? ")
-    title = input('Please enter the title of the text: ')
-    title = tokenize(title)
-    title = [ps.stem(word) for word in title]
-    text = read_input()
+    # title = input('Please enter the title of the text: ')
+    # title = tokenize(title)
+    # title = [ps.stem(word) for word in title]
+    # text = read_input()
+    article_url = input("Enter url for article you wish to summarize:")
+    text = extract_article(article_url)
 
     # Remove stop words & create frequency table
     word_tokens = tokenize(text)
