@@ -101,7 +101,7 @@ def main():
                 if word in word_probs: # only look at non-stopwords
                     info_score += word_probs[word]
                     length += 1
-            info_score /= length # compute average probability
+            # info_score /= length # compute average probability
             if info_score: # only count sentences that actually have non stopwords        
                 sentence_scores.append((sentence, info_score, order_num))
                 order_num += 1
