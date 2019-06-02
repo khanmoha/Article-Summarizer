@@ -52,10 +52,7 @@ def main():
     while summary_len == "0":
         print("Error: Please enter a nonzero amount.")
         summary_len = input("How many sentences should be in the summary? ")
-    # title = input('Please enter the title of the text: ')
-    # title = tokenize(title)
-    # title = [ps.stem(word) for word in title]
-    # text = read_input()
+    summary_len = int(summary_len)
     article_url = input("Enter url for article you wish to summarize:")
     text = extract_article(article_url)
     
@@ -70,56 +67,73 @@ def main():
     if not text:
         sys.exit("Error: URL returned no article text.")
 
-    # Remove stop words & create frequency table
+    # Compute probabilities for each word (dont count stop words)
     word_tokens = tokenize(text)
-    frequency_table = {}
+    word_probs = {}
+    N = 0 # total number of words
     for word in word_tokens:
         if word not in stop_words:
             word = ps.stem(word)
-            if word not in frequency_table:
-                frequency_table[word] = 1
+            if word not in word_probs:
+                word_probs[word] = 1
             else:
-                frequency_table[word] += 1 
-    if not frequency_table:
+                word_probs[word] += 1 
+            N += 1
+    if not word_probs:
         sys.exit("Error: Article does not contain enough unique content to create a summary.")
+    for word, freq in word_probs.items():
+        word_probs[word] = freq/N
 
-    # Rank info content of each sentence
+    # Implement SumBasic algorithm
     text = re.sub(r'[“”]', '"', text) # quotes mess with sent_tokenize()
     sentences = sent_tokenize(text)
+    summary = []
     sentence_scores = []
-    order_num = 0 # remember order of sentences in text
-    for sentence in sentences:
-        # sentence = clean_sentence(sentence)
-        # title_words_set = set()
-        # title_words_bonus = 0
-        info_score = 0
-        sentence_len = 0 # count nonstop words towards length
-        sentence_tokens = tokenize(sentence)
-        for word in sentence_tokens:
+    while len(summary) < summary_len:
+        # 1. Compute sentence scores (average probability of words)
+        order_num = 0 # remember order of sentences in text
+        for sentence in sentences:
+            info_score = 0
+            length = 0
+            sentence_tokens = tokenize(sentence)
+            for word in sentence_tokens:
+                word = ps.stem(word)
+                if word in word_probs: # only look at non-stopwords
+                    info_score += word_probs[word]
+                    length += 1
+            info_score /= length # compute average probability
+            if info_score: # only count sentences that actually have non stopwords        
+                sentence_scores.append((sentence, info_score, order_num))
+                order_num += 1
+        # 2. Find most probable word
+        best = ["", 0]
+        for word, prob in word_probs.items():
+            if prob > best[1]:
+                best = [word, prob]
+        # print("best word:", best)
+        # 3. Find highest scoring sentence that contains the most probable word
+        summ_sent = ("", 0, -1)
+        for sent in sentence_scores:
+            if best[0] in sent[0] and sent[1] > summ_sent[1] and sent not in summary:
+                summ_sent = sent
+        assert(summ_sent[0] != "")
+        # print("best sent:", summ_sent[0])
+        summary.append(summ_sent)
+        # 4. Decrease probabilities for all words in new summary sentence
+        for word in tokenize(summ_sent[0]):
             word = ps.stem(word)
-            if word in frequency_table: # only look at non-stopwords
-                # if word in title and word not in title_words_set: 
-                #     title_words_bonus += (1/len(title))
-                #     title_words_set.add(word)
-                sentence_len += 1
-                info_score += frequency_table[word]
-        
-        if sentence_len: # only count sentences that actually have non stopwords        
-            # info_score = boost(info_score, order_num, len(sentences)) # adjust score by where the sentence appeared in text
-            # if (title_words_bonus):
-            #     info_score *= (1+title_words_bonus)
-            info_score = info_score # adjust score by length of sentence?
-            sentence_scores.append((sentence, info_score, order_num))
-            order_num += 1
-    sentence_scores.sort(key=itemgetter(1), reverse=True) # sort by score
+            if word in word_probs:
+                # print(word)        
+                word_probs[word] *= word_probs[word]
+        assert(word_probs[best[0]] < best[1])
+        sentence_scores = []
+    summary.sort(key=itemgetter(2)) # sort by appearance in text
 
-    # Return highest ranking sentences
-    summary_tuples = sentence_scores[0:int(summary_len)]
-    summary_tuples.sort(key=itemgetter(2)) # sort by appearance in original text
     os.system('clear')
     print("Summary:\n")
-    for tuple_ in summary_tuples:
+    for tuple_ in summary:
         print(tuple_[0]+"\n")
+
 
 if __name__ == "__main__":
     main()
