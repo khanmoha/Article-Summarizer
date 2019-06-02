@@ -114,8 +114,9 @@ def main():
         # 3. Find highest scoring sentence that contains the most probable word
         summ_sent = ("", 0, -1)
         for sent in sentence_scores:
-            if best[0] in sent[0] and sent[1] > summ_sent[1] and sent not in summary:
-                summ_sent = sent
+            if sent[1] > summ_sent[1] and sent not in summary:
+                if best[0] in [ps.stem(word) for word in tokenize(sent[0])]:
+                    summ_sent = sent
         assert(summ_sent[0] != "")
         # print("best sent:", summ_sent[0])
         summary.append(summ_sent)
@@ -133,7 +134,6 @@ def main():
     print("Summary:\n")
     for tuple_ in summary:
         print(tuple_[0]+"\n")
-
 
 if __name__ == "__main__":
     main()
