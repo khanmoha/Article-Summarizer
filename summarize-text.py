@@ -7,6 +7,7 @@ from nltk.stem import PorterStemmer
 from bs4 import BeautifulSoup
 
 def extract_article(article_url):
+    """Extract article text by using Web API from boilerpipe."""
     url = "http://boilerpipe-web.appspot.com/extract?output=text&url="
     url = url + article_url
     print(url)
@@ -38,26 +39,19 @@ def clean_sentence(sentence):
     sentence = sentence.replace("\n", "")
     return sentence
 
-def boost(score, index, num_sentences):
-    """Weight sentences that appear at the beginning and end more."""
-    if (index > num_sentences/2):
-        index = num_sentences - (index + 1)
-    factor = 1 + math.exp((index*(-1)) / num_sentences/2)
-    return (score * factor)
-
-def main():
-    ps = PorterStemmer() # stems words to their roots
-    stop_words = set(stopwords.words('english'))
+def read_input():
+    """Read article URL and summary length from user."""
     summary_len = input("How many sentences should be in the summary? ")
     while summary_len == "0":
         print("Error: Please enter a nonzero amount.")
         summary_len = input("How many sentences should be in the summary? ")
     summary_len = int(summary_len)
     article_url = input("Enter url for article you wish to summarize:")
-    text = extract_article(article_url)
-    
-    # Clean up text
-    text = re.sub(r'[“”]', '"', text) # replace special quotes with normal ones
+    return summary_len, article_url
+
+def clean_text(text):
+    """Remove non-article/text sentences and special quotes."""
+    text = re.sub(r'[“”]', '"', text) # quotes mess with sent_tokenize()
     # Remove lines that do not end in punctuation e.g. titles, captions, meta-data etc
     lines = text.split("\n")  
     lines_filtered = [line for line in lines if line and (line[-1] == "." or \
@@ -66,8 +60,11 @@ def main():
     text = "\n".join(lines_filtered)
     if not text:
         sys.exit("Error: URL returned no article text.")
+    return text
 
-    # Compute probabilities for each word (dont count stop words)
+def compute_word_probs(text, stop_words):
+    """Compute word probabilities of all unique words in text."""
+    ps = PorterStemmer()
     word_tokens = tokenize(text)
     word_probs = {}
     N = 0 # total number of words
@@ -83,53 +80,73 @@ def main():
         sys.exit("Error: Article does not contain enough unique content to create a summary.")
     for word, freq in word_probs.items():
         word_probs[word] = freq/N
+    return word_probs
+
+def compute_sentence_scores(sentences, word_probs):
+    """Assign sentence score based on sum of word probabilities. 
+    This will skew towards longer sentences."""
+    ps = PorterStemmer()
+    sentence_scores = []
+    order_num = 0 # remember order of sentences in text
+    for sentence in sentences:
+        info_score = 0
+        length = 0
+        sentence_tokens = tokenize(sentence)
+        for word in sentence_tokens:
+            word = ps.stem(word)
+            if word in word_probs: # only look at non-stopwords
+                info_score += word_probs[word]
+                length += 1
+        # info_score /= length # compute average probability
+        if info_score: # only count sentences that actually have non stopwords        
+            sentence_scores.append((sentence, info_score, order_num))
+            order_num += 1
+    return sentence_scores
+
+def main():
+    ps = PorterStemmer() # stems words to their roots
+    stop_words = set(stopwords.words('english'))
+    # Obtain article text
+    summary_len, article_url = read_input()
+    text = extract_article(article_url)
+    
+    # Remove non-article/text lines and special quotes
+    text = clean_text(text)
+
+    # Compute probabilities for each word (dont count stop words)
+    word_probs = compute_word_probs(text, stop_words)
 
     # Implement SumBasic algorithm
-    text = re.sub(r'[“”]', '"', text) # quotes mess with sent_tokenize()
     sentences = sent_tokenize(text)
     summary = []
-    sentence_scores = []
     while len(summary) < summary_len:
-        # 1. Compute sentence scores (average probability of words)
-        order_num = 0 # remember order of sentences in text
-        for sentence in sentences:
-            info_score = 0
-            length = 0
-            sentence_tokens = tokenize(sentence)
-            for word in sentence_tokens:
-                word = ps.stem(word)
-                if word in word_probs: # only look at non-stopwords
-                    info_score += word_probs[word]
-                    length += 1
-            # info_score /= length # compute average probability
-            if info_score: # only count sentences that actually have non stopwords        
-                sentence_scores.append((sentence, info_score, order_num))
-                order_num += 1
+        # 1. Compute sentence scores (total probability of words)
+        sentence_scores = compute_sentence_scores(sentences, word_probs)
+        
         # 2. Find most probable word
         best = ["", 0]
         for word, prob in word_probs.items():
             if prob > best[1]:
                 best = [word, prob]
-        # print("best word:", best)
+        
         # 3. Find highest scoring sentence that contains the most probable word
-        summ_sent = ("", 0, -1)
+        summ_sent = ("", 0, -1) # (sentence, info score, order num)
         for sent in sentence_scores:
             if sent[1] > summ_sent[1] and sent not in summary:
                 if best[0] in [ps.stem(word) for word in tokenize(sent[0])]:
                     summ_sent = sent
         assert(summ_sent[0] != "")
-        # print("best sent:", summ_sent[0])
         summary.append(summ_sent)
+
         # 4. Decrease probabilities for all words in new summary sentence
         for word in tokenize(summ_sent[0]):
             word = ps.stem(word)
-            if word in word_probs:
-                # print(word)        
+            if word in word_probs:      
                 word_probs[word] *= word_probs[word]
-        assert(word_probs[best[0]] < best[1])
-        sentence_scores = []
+        
     summary.sort(key=itemgetter(2)) # sort by appearance in text
 
+    # Output summary
     os.system('clear')
     print("Summary:\n")
     for tuple_ in summary:
