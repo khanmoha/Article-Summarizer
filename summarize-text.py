@@ -10,7 +10,7 @@ def extract_article(article_url):
     """Extract article text by using Web API from boilerpipe."""
     url = "http://boilerpipe-web.appspot.com/extract?output=text&url="
     url = url + article_url
-    print(url)
+    # print(url)
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
         response = urllib.request.urlopen(req)
